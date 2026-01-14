@@ -1,7 +1,7 @@
 version: '3'
 services:
   web-proxy:
-    container_name: proxy-setting
+    container_name: proxy
     build: .
     ports:
       - "4000:4000"
