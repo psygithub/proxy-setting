@@ -35,6 +35,7 @@
 2.  启动服务：
     ```bash
     docker-compose up --build -d
+    或者 docker compose up --build -d
     ```
 
 3.  访问管理界面：
