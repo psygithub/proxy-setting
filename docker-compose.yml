@@ -4,7 +4,7 @@ services:
     container_name: proxy
     build: .
     ports:
-      - "4000:4000"
+      - "3000:3000"
     volumes:
       - ./backend/data:/app/backend/data
       - ./backend/.env:/app/backend/.env

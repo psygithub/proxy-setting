@@ -39,7 +39,7 @@
     ```
 
 3.  访问管理界面：
-    *   打开浏览器访问: `http://localhost:4000`
+    *   打开浏览器访问: `http://localhost:3000`
     *   默认账号: `admin`
     *   默认密码: `admin123` (可在 `backend/.env` 中修改)
 
@@ -51,7 +51,7 @@
 cd backend
 # 安装依赖
 npm install
-# 启动服务 (运行在 4000 端口)
+# 启动服务 (运行在 3000 端口)
 node server.js
 # 或开发模式
 npm run dev
@@ -67,7 +67,7 @@ npm install
 npm run dev
 ```
 
-前端开发服务器会自动将 `/api` 请求代理到后端 4000 端口。
+前端开发服务器会自动将 `/api` 请求代理到后端 3000 端口。
 
 ## 项目结构
 
