@@ -23,7 +23,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import axios from 'axios'
+import axios from '../utils/axios'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
