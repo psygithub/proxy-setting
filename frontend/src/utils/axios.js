@@ -3,11 +3,14 @@ import router from '../router';
 import { ElMessage } from 'element-plus';
 
 const service = axios.create({
-  baseURL: '', 
+  baseURL: import.meta.env.BASE_URL, 
   timeout: 10000
 });
 
 service.interceptors.request.use(config => {
+  if (config.url?.startsWith('/')) {
+    config.url = config.url.substring(1);
+  }
   const token = localStorage.getItem('token');
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`;
