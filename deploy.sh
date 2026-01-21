@@ -19,8 +19,13 @@ if [ -d "backend/.env" ]; then
 fi
 
 if [ ! -f "backend/.env" ]; then
-    echo "[Info] backend/.env not found. Creating default..."
-    echo "PORT=4000" > backend/.env
+    echo "[Error] backend/.env not found!"
+    echo "Please create 'backend/.env' manually with the following content:"
+    echo "PORT=4000"
+    echo "ADMIN_USER=your_username"
+    echo "ADMIN_PASS=your_password"
+    echo "JWT_SECRET=your_secret"
+    exit 1
 fi
 
 # 3. Setup Network
