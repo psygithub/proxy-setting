@@ -1,10 +1,10 @@
-# Stage 1: Build Frontend
-FROM node:20-alpine AS frontend-build
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ .
-RUN npm run build
+# Stage 1: Build Frontend (Disabled: Local build required)
+# FROM node:20-alpine AS frontend-build
+# WORKDIR /app/frontend
+# COPY frontend/package*.json ./
+# RUN npm install
+# COPY frontend/ .
+# RUN npm run build
 
 # Stage 2: Backend & Final
 FROM node:20-alpine
@@ -16,8 +16,9 @@ COPY backend/ .
 # Ensure data directory exists
 RUN mkdir -p data
 
-# Copy built frontend
-COPY --from=frontend-build /app/frontend/dist ../frontend/dist
+# Copy built frontend (Use local dist folder)
+# COPY --from=frontend-build /app/frontend/dist ../frontend/dist
+COPY frontend/dist ../frontend/dist
 
 EXPOSE 4000
 CMD ["node", "server.js"]
