@@ -35,7 +35,9 @@ const configUrl = ref('')
 const qrSrc = ref('')
 
 onMounted(async () => {
-    configUrl.value = new URL('/api/subscribe/config', window.location.origin).href
+    // Use BASE_URL from vite config (/proxy/) to construct correct full URL
+    const baseUrl = import.meta.env.BASE_URL;
+    configUrl.value = new URL(`${baseUrl}api/subscribe/config`, window.location.origin).href
     
     try {
         const res = await request.get('/api/subscribe/qr', { responseType: 'blob' })
