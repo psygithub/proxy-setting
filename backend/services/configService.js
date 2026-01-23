@@ -3,13 +3,16 @@ const path = require('path');
 
 const MAPPINGS_FILE = path.join(__dirname, '../data/mappings.json');
 const GENERATED_CONFIG_FILE = path.join(__dirname, '../data/generated_config.json');
+const TEMPLATE_CONFIG_FILE = path.join(__dirname, '../config/templates.json');
 
 const ensureDataFile = () => {
     const dir = path.dirname(MAPPINGS_FILE);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    
     if (!fs.existsSync(MAPPINGS_FILE)) {
         fs.writeFileSync(MAPPINGS_FILE, JSON.stringify([], null, 2));
     }
+    // template_config.json is now expected to be provided by deployment (git), not generated.
 };
 
 ensureDataFile();
@@ -22,47 +25,33 @@ const loadMappings = () => {
     }
 };
 
+const loadTemplateConfig = () => {
+    try {
+        if (fs.existsSync(TEMPLATE_CONFIG_FILE)) {
+            return JSON.parse(fs.readFileSync(TEMPLATE_CONFIG_FILE, 'utf8'));
+        }
+    } catch (e) {
+        console.error("Failed to load template config:", e);
+    }
+    // Minimal fallback to prevent crash, but logic relies on external file now
+    return {
+        base: { 
+            log: { loglevel: "info" },
+            inbounds: [], 
+            outbounds: [], 
+            routing: { rules: [] } 
+        },
+        staticRules: [],
+        optimizationRules: []
+    };
+};
+
 const saveMappings = (mappings) => {
     fs.writeFileSync(MAPPINGS_FILE, JSON.stringify(mappings, null, 2));
     generateConfig(mappings);
 };
 
 // --- Config Generation Logic ---
-
-const getBaseConfig = () => ({
-    log: { loglevel: "info" },
-    dns: {
-        hosts: { "dns.google": "8.8.8.8", "proxy.example.com": "127.0.0.1" },
-        servers: [
-            { "address": "1.1.1.1", "domains": ["geosite:geolocation-!cn"], "expectIPs": ["geoip:!cn"] },
-            { "address": "223.5.5.5", "domains": ["geosite:cn"], "expectIPs": ["geoip:cn"] },
-            "8.8.8.8",
-            "https://dns.google/dns-query",
-            { "address": "223.5.5.5", "domains": ["xxfa85toflprzb7rt7-id.xxfnode.com"] }
-        ]
-    },
-    inbounds: [],
-    outbounds: [
-        { protocol: "freedom", tag: "direct" },
-        { protocol: "blackhole", tag: "block" }
-    ],
-    routing: {
-        domainStrategy: "IPIfNonMatch",
-        rules: []
-    }
-});
-
-const getStaticRules = () => [
-    { type: "field", domain: ["geosite:private", "geosite:cn"], outboundTag: "direct" },
-    { type: "field", ip: ["geoip:private", "geoip:cn"], outboundTag: "direct" },
-    { type: "field", ip: ["0.0.0.0/0", "::/0"], outboundTag: "block" }
-];
-
-const getOptimizationRules = () => [
-    { type: "field", protocol: ["quic"], outboundTag: "block" },
-    { type: "field", protocol: ["dns"], outboundTag: "direct" },
-    { type: "field", port: "123", network: "udp", outboundTag: "direct" }
-];
 
 const convertNodeToOutbound = (node) => {
     const ntype = node.type;
@@ -172,7 +161,18 @@ const convertNodeToOutbound = (node) => {
 };
 
 const generateConfig = (mappings) => {
-    const finalConfig = getBaseConfig();
+    // Load template from file
+    const template = loadTemplateConfig();
+    
+    // Deep copy base config to avoid mutation
+    const finalConfig = JSON.parse(JSON.stringify(template.base || {}));
+    
+    // Ensure essential arrays exist
+    if (!finalConfig.outbounds) finalConfig.outbounds = [];
+    if (!finalConfig.inbounds) finalConfig.inbounds = [];
+    if (!finalConfig.routing) finalConfig.routing = { rules: [] };
+    if (!finalConfig.routing.rules) finalConfig.routing.rules = [];
+
     const newInbounds = [];
     const newOutbounds = [];
     const newRules = [];
@@ -199,8 +199,6 @@ const generateConfig = (mappings) => {
         }
 
         if (ob) {
-            // Deduplicate outbound
-            // Simple stringify check (could be improved)
             const contentStr = JSON.stringify(ob);
             let finalTag;
 
@@ -225,12 +223,13 @@ const generateConfig = (mappings) => {
         }
     });
 
-    const optRules = getOptimizationRules();
-    const staticRules = getStaticRules();
+    const optRules = template.optimizationRules || [];
+    const staticRules = template.staticRules || [];
 
     finalConfig.inbounds = newInbounds;
     finalConfig.outbounds = [...newOutbounds, ...finalConfig.outbounds];
-    finalConfig.routing.rules = [optRules[0], ...newRules, ...optRules.slice(1), ...staticRules]; // Block QUIC -> New Rules -> Other Opt -> Static
+    // Rules Priority: Opt Rules (QUIC block etc) -> User Rules -> Static Rules (GeoIP etc)
+    finalConfig.routing.rules = [...optRules, ...newRules, ...staticRules]; 
 
     // Save generated config
     const formatted = formatConfig(finalConfig);

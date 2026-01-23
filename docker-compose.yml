@@ -7,6 +7,7 @@ services:
       - "4000:4000"
     volumes:
       - ./backend/data:/app/backend/data
+      - ./backend/config:/app/backend/config
       - ./backend/.env:/app/backend/.env
     restart: unless-stopped
     networks:

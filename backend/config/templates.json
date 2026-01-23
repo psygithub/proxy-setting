@@ -1,0 +1,34 @@
+{
+  "base": {
+    "log": { "loglevel": "info" },
+    "dns": {
+      "hosts": { "dns.google": "8.8.8.8", "proxy.example.com": "127.0.0.1" },
+      "servers": [
+        { "address": "1.1.1.1", "domains": ["geosite:geolocation-!cn"], "expectIPs": ["geoip:!cn"] },
+        { "address": "223.5.5.5", "domains": ["geosite:cn"], "expectIPs": ["geoip:cn"] },
+        "8.8.8.8",
+        "https://dns.google/dns-query",
+        { "address": "223.5.5.5", "domains": ["xxfa85toflprzb7rt7-id.xxfnode.com"] }
+      ]
+    },
+    "inbounds": [],
+    "outbounds": [
+      { "protocol": "freedom", "tag": "direct" },
+      { "protocol": "blackhole", "tag": "block" }
+    ],
+    "routing": {
+      "domainStrategy": "IPIfNonMatch",
+      "rules": []
+    }
+  },
+  "staticRules": [
+    { "type": "field", "domain": ["geosite:private", "geosite:cn"], "outboundTag": "direct" },
+    { "type": "field", "ip": ["geoip:private", "geoip:cn"], "outboundTag": "direct" },
+    { "type": "field", "ip": ["0.0.0.0/0", "::/0"], "outboundTag": "block" }
+  ],
+  "optimizationRules": [
+    { "type": "field", "protocol": ["quic"], "outboundTag": "block" },
+    { "type": "field", "protocol": ["dns"], "outboundTag": "direct" },
+    { "type": "field", "port": "123", "network": "udp", "outboundTag": "direct" }
+  ]
+}
