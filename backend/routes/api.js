@@ -17,9 +17,10 @@ router.get('/subscribe/config', (req, res) => {
 
 router.get('/subscribe/qr', async (req, res) => {
     try {
-        const protocol = req.protocol;
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
         const host = req.get('host');
-        const fullUrl = `${protocol}://${host}/api/subscribe/config`;
+        const basePath = process.env.BASE_PATH || '';
+        const fullUrl = `${protocol}://${host}${basePath}/api/subscribe/config`;
         
         const qr = await QRCode.toDataURL(fullUrl);
         const img = Buffer.from(qr.split(',')[1], 'base64');
