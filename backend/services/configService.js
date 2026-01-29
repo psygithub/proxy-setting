@@ -299,10 +299,128 @@ const getGeneratedConfigString = () => {
     return formatConfig(config);
 };
 
+const convertToUri = (node) => {
+    const ps = node.name || 'node';
+    const add = node.address;
+    const port = node.port;
+    const type = node.type;
+
+    if (type === 'vmess') {
+        const config = {
+            v: "2",
+            ps: ps,
+            add: add,
+            port: port,
+            id: node.uuid,
+            aid: node.alterId || 0,
+            scy: node.security || 'auto',
+            net: node.network || 'tcp',
+            type: node.type_header || 'none',
+            host: node.host || '',
+            path: node.path || '',
+            tls: node.tls === 'tls' ? 'tls' : '',
+            sni: node.sni || node.host || '',
+            alpn: node.alpn || ''
+        };
+        return 'vmess://' + Buffer.from(JSON.stringify(config)).toString('base64');
+    } else if (type === 'vless') {
+        let uri = `vless://${node.uuid}@${add}:${port}?encryption=none&security=${node.security||'none'}&type=${node.network||'tcp'}`;
+        if (node.host) uri += `&host=${encodeURIComponent(node.host)}`;
+        if (node.path) uri += `&path=${encodeURIComponent(node.path)}`;
+        if (node.sni) uri += `&sni=${encodeURIComponent(node.sni)}`;
+        if (node.flow) uri += `&flow=${encodeURIComponent(node.flow)}`;
+        if (node.alpn) uri += `&alpn=${encodeURIComponent(node.alpn)}`;
+        uri += `#${encodeURIComponent(ps)}`;
+        return uri;
+    } else if (type === 'trojan') {
+        let uri = `trojan://${node.password}@${add}:${port}?security=${node.security||'tls'}&type=${node.network||'tcp'}`;
+        if (node.sni) uri += `&sni=${encodeURIComponent(node.sni)}`;
+        if (node.alpn) uri += `&alpn=${encodeURIComponent(node.alpn)}`;
+        uri += `#${encodeURIComponent(ps)}`;
+        return uri;
+    } else if (type === 'shadowsocks') {
+        const cred = `${node.method}:${node.password}`;
+        const b64Cred = Buffer.from(cred).toString('base64');
+        return `ss://${b64Cred}@${add}:${port}#${encodeURIComponent(ps)}`;
+    }
+    return '';
+};
+
+const convertInboundToUri = (inbound, host) => {
+    const protocol = inbound.protocol;
+    const port = inbound.port;
+    const tag = inbound.tag || `in-${port}`;
+    const name = `VPS-${port}-${protocol}`;
+    
+    if (protocol === 'socks') {
+        // Handle auth if exists
+        let authPart = '';
+        if (inbound.settings && inbound.settings.accounts && inbound.settings.accounts.length > 0) {
+            const acc = inbound.settings.accounts[0];
+            const cred = `${acc.user}:${acc.pass}`;
+            authPart = Buffer.from(cred).toString('base64') + '@';
+        }
+        return `socks://${authPart}${host}:${port}#${encodeURIComponent(name)}`;
+    } else if (protocol === 'http') {
+        let authPart = '';
+        if (inbound.settings && inbound.settings.accounts && inbound.settings.accounts.length > 0) {
+            const acc = inbound.settings.accounts[0];
+            authPart = `${acc.user}:${acc.pass}@`;
+        }
+        return `http://${authPart}${host}:${port}#${encodeURIComponent(name)}`;
+    } else if (protocol === 'vmess') {
+        if (inbound.settings && inbound.settings.clients && inbound.settings.clients.length > 0) {
+            const client = inbound.settings.clients[0];
+            const config = {
+                v: "2",
+                ps: name,
+                add: host,
+                port: port,
+                id: client.id,
+                aid: client.alterId || 0,
+                scy: "auto",
+                net: "tcp",
+                type: "none",
+                tls: ""
+            };
+            return 'vmess://' + Buffer.from(JSON.stringify(config)).toString('base64');
+        }
+    }
+    return null;
+};
+
+const generatePasswallSubscription = (host) => {
+    const mappings = loadMappings();
+    const links = [];
+    
+    // Add Outbound Nodes
+    mappings.forEach(m => {
+        if (m.outbound_node) {
+            const link = convertToUri(m.outbound_node);
+            if (link) links.push(link);
+        }
+    });
+
+    // Add Inbound Proxies
+    // Removed as per user request (User will configure ports manually on router)
+    /* 
+    if (host) {
+        mappings.forEach(m => {
+            if (m.inbound) {
+                // ...
+            }
+        });
+    }
+    */
+
+    return Buffer.from(links.join('\n')).toString('base64');
+};
+
 module.exports = {
     loadMappings,
     saveMappings,
     generateConfig,
     getGeneratedConfig,
-    getGeneratedConfigString
+    getGeneratedConfigString,
+    generatePasswallSubscription
 };

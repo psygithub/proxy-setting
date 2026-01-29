@@ -6,8 +6,15 @@
        </div>
     </template>
     <div class="share-content">
+       <div class="type-section" style="margin-bottom: 20px;">
+          <el-radio-group v-model="subType">
+             <el-radio-button label="xray">Xray Core (JSON)</el-radio-button>
+             <el-radio-button label="passwall">Passwall 2 (Base64)</el-radio-button>
+          </el-radio-group>
+       </div>
+
        <div class="url-section">
-          <h3>订阅链接 (Config JSON)</h3>
+          <h3>订阅链接</h3>
           <el-input v-model="configUrl" readonly>
              <template #append>
                 <el-button @click="copyUrl">复制</el-button>
@@ -27,25 +34,35 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import request from '../utils/axios'
 import { ElMessage } from 'element-plus'
 
 const configUrl = ref('')
 const qrSrc = ref('')
+const subType = ref('xray')
 
-onMounted(async () => {
-    // Use BASE_URL from vite config (/proxy/) to construct correct full URL
+const updateLinks = async () => {
     const baseUrl = import.meta.env.BASE_URL;
-    configUrl.value = new URL(`${baseUrl}api/subscribe/config`, window.location.origin).href
+    const endpoint = subType.value === 'passwall' ? 'api/subscribe/passwall' : 'api/subscribe/config';
+    configUrl.value = new URL(`${baseUrl}${endpoint}`, window.location.origin).href
     
     try {
-        const res = await request.get('/api/subscribe/qr', { responseType: 'blob' })
+        // Revoke old URL to avoid memory leaks
+        if (qrSrc.value) URL.revokeObjectURL(qrSrc.value);
+        
+        const res = await request.get('/api/subscribe/qr', { 
+            params: { type: subType.value },
+            responseType: 'blob' 
+        })
         qrSrc.value = URL.createObjectURL(res.data)
     } catch (e) {
         ElMessage.error('无法加载二维码')
     }
-})
+}
+
+onMounted(updateLinks)
+watch(subType, updateLinks)
 
 const copyUrl = () => {
    navigator.clipboard.writeText(configUrl.value)

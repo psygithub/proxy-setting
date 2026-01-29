@@ -15,12 +15,22 @@ router.get('/subscribe/config', (req, res) => {
     res.send(configStr);
 });
 
+router.get('/subscribe/passwall', (req, res) => {
+    // Prefer env VPS_HOST, fallback to request host
+    const host = process.env.VPS_HOST || req.get('host');
+    const configStr = configService.generatePasswallSubscription(host);
+    res.setHeader('Content-Type', 'text/plain');
+    res.send(configStr);
+});
+
 router.get('/subscribe/qr', async (req, res) => {
     try {
+        const type = req.query.type || 'xray';
         const protocol = req.headers['x-forwarded-proto'] || req.protocol;
         const host = req.get('host');
         const basePath = process.env.BASE_PATH || '';
-        const fullUrl = `${protocol}://${host}${basePath}/api/subscribe/config`;
+        const endpoint = type === 'passwall' ? '/api/subscribe/passwall' : '/api/subscribe/config';
+        const fullUrl = `${protocol}://${host}${basePath}${endpoint}`;
         
         const qr = await QRCode.toDataURL(fullUrl);
         const img = Buffer.from(qr.split(',')[1], 'base64');
